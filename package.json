@@ -19,6 +19,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@types/mysql2": "github:types/mysql2",
     "argon2": "^0.27.0",
     "body-parser": "^1.19.0",
     "celebrate": "^13.0.4",

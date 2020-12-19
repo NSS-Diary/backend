@@ -31,4 +31,21 @@ export default (app: Router) => {
       }
     },
   );
+
+  route.get(
+    '/list',
+    middlewares.isAuth,
+    middlewares.requiredRole('CLASSROOM_ADMIN'),
+    async (req: IAuth, res: Response, next: NextFunction) => {
+      logger.debug('Calling Classroom list endpoint');
+      try {
+        const classroomServiceInstance = new ClassroomService();
+        const result = await classroomServiceInstance.ListClassroom(req.token);
+        return res.json(result).status(200);
+      } catch (e) {
+        logger.error('🔥 error: %o', e);
+        return next(e);
+      }
+    },
+  );
 };

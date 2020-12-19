@@ -1,8 +1,9 @@
 import logger from '../../loaders/logger';
 import db from '../../loaders/db';
 import ShortUniqueId from 'short-unique-id';
-import { ICreateClassroom } from '../../interfaces/Classroom';
+import { IClassroom, ICreateClassroom } from '../../interfaces/Classroom';
 import { IDefaultResponse } from '../../interfaces/Response';
+import { IGetUserInfo } from '../../interfaces/Users';
 
 export default class ClassroomService {
   public async CreateClassroom(classroom: ICreateClassroom): Promise<IDefaultResponse> {
@@ -53,6 +54,25 @@ export default class ClassroomService {
       throw error;
     } finally {
       if (conn) await conn.release();
+    }
+  }
+
+  public async ListClassroom(user: IGetUserInfo): Promise<IClassroom[]> {
+    try {
+      logger.silly('Fetching Classrooms');
+      var list;
+      if (user.user_type === 'SUPER_ADMIN') {
+        list = await db.query('SELECT * FROM Classroom');
+      } else {
+        list = await db.query('SELECT * FROM Classroom Where Classroom.admin_name = ?', [
+          user.username,
+        ]);
+      }
+      const res = JSON.parse(JSON.stringify(list[0]));
+      return res;
+    } catch (e) {
+      logger.error(e);
+      throw e;
     }
   }
 }
