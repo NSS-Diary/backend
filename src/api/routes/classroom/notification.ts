@@ -32,4 +32,25 @@ export default (app: Router) => {
       }
     },
   );
+
+  route.get(
+    '/list',
+    middlewares.isAuth,
+    celebrate({
+      body: Joi.object({
+        classroom_code: Joi.string().required(),
+      }),
+    }),
+    async (req: IAuth, res: Response, next: NextFunction) => {
+      logger.debug('Calling Notification List endpoint with body: %o', req.body);
+      try {
+        const notificationServiceInstance = new NotificationService();
+        const result = await notificationServiceInstance.ListNotification(req.body.classroom_code);
+        return res.json(result).status(200);
+      } catch (e) {
+        logger.error('🔥 error: %o', e);
+        return next(e);
+      }
+    },
+  );
 };

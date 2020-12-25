@@ -3,9 +3,27 @@ import db from '../../loaders/db';
 import ShortUniqueId from 'short-unique-id';
 import { IDefaultResponse } from '../../interfaces/Response';
 import { IGetUserInfo } from '../../interfaces/Users';
-import { IAddNotification } from '../../interfaces/Notification';
+import { IAddNotification, IListNotification } from '../../interfaces/Notification';
 
 export default class NotificationService {
+  public async ListNotification(classroom_code: string): Promise<IListNotification[]> {
+    try {
+      //
+      // TODO: Add Verification for users
+      //
+      logger.silly('Fetching Notifications');
+      const list = await db.query(
+        'SELECT * FROM Notification Where Notification.classroom_code = ?',
+        [classroom_code],
+      );
+      const res = JSON.parse(JSON.stringify(list[0]));
+      return res;
+    } catch (e) {
+      logger.error(e);
+      throw e;
+    }
+  }
+
   public async AddNotification(
     notif: IAddNotification,
     user: IGetUserInfo,
