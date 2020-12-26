@@ -51,7 +51,7 @@ export default class NotificationService {
         throw new Error('Not enough Permissions');
       }
 
-      // Find a valid classroom_code
+      // Find a valid notification_id
       logger.silly('Generating UUID');
       const uid = new ShortUniqueId();
       var UUID: string;
