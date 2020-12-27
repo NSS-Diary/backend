@@ -44,11 +44,39 @@ export default (app: Router) => {
       }),
     }),
     async (req: IAuth, res: Response, next: NextFunction) => {
-      logger.debug('Calling Activity List endpoint with body: %o', req.body);
+      logger.debug('Calling Activity List endpoint');
       try {
         const acitivityServiceInstance = new ActivityService();
         const result = await acitivityServiceInstance.ListActivities(req.body.classroom_code);
         return res.json(result).status(200);
+      } catch (e) {
+        logger.error('🔥 error: %o', e);
+        return next(e);
+      }
+    },
+  );
+
+  route.post(
+    '/enroll',
+    middlewares.isAuth,
+    celebrate({
+      body: Joi.object({
+        activity_id: Joi.string().required(),
+      }),
+    }),
+    async (req: IAuth, res: Response, next: NextFunction) => {
+      logger.debug('Calling Activity Enroll endpoint with body %o', req.body);
+      try {
+        if (req.token.user_type === 'STUDENT') {
+          const acitivityServiceInstance = new ActivityService();
+          const result = await acitivityServiceInstance.EnrollStudent(
+            req.token.username,
+            req.body.activity_id,
+          );
+          return res.json(result).status(200);
+        } else {
+          throw new Error('User is not a STUDENT');
+        }
       } catch (e) {
         logger.error('🔥 error: %o', e);
         return next(e);

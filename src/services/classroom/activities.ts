@@ -23,6 +23,62 @@ export default class ActivityService {
     }
   }
 
+  public async EnrollStudent(username: string, activity_id: string): Promise<IDefaultResponse> {
+    let conn = null;
+    try {
+      conn = await db.getConnection();
+      logger.silly('Transaction Begin');
+      await conn.beginTransaction();
+
+      // Check if student is in the same classroom as Activity
+      logger.silly('Checking if Student in Classroom');
+      const [
+        activityStatus,
+      ] = await conn.query(
+        'SELECT Activities.Status FROM Student_Metadata, Activities WHERE Student_Metadata.student = ? AND Activities.activity_id = ? AND Activities.classroom_code = Student_Metadata.classroom_code',
+        [username, activity_id],
+      );
+      if (activityStatus.length === 0) {
+        throw new Error('No Activity with this ID in the Classroom');
+      } else if (activityStatus[0].Status === 'LOCKED') {
+        throw new Error('Activity is Locked. Cannot Enroll');
+      }
+
+      // Find a valid activity_id
+      logger.silly('Generating UUID');
+      const uid = new ShortUniqueId();
+      var UUID: string;
+      while (1) {
+        UUID = uid();
+        const collidingClasses = await conn.query(
+          'SELECT * FROM Enrolls WHERE Enrolls.enrollment_id = ?',
+          [UUID],
+        );
+        if (collidingClasses[0].length === 0) {
+          break;
+        }
+      }
+
+      // Insert db record
+      logger.silly('Creating enrollment db record');
+      const results = await conn.query('INSERT INTO Enrolls VALUES (?, ?, ?, DEFAULT, DEFAULT)', [
+        UUID,
+        activity_id,
+        username,
+      ]);
+
+      await conn.commit();
+      logger.silly('Transaction Commited');
+      return { success: true, message: 'Student Enrolled' };
+    } catch (error) {
+      logger.error(error);
+      if (conn) await conn.rollback();
+      throw error;
+    } finally {
+      if (conn) await conn.release();
+    }
+  }
+
   public async AddActivity(activity: IAddActivity, user: IGetUserInfo): Promise<IDefaultResponse> {
     let conn = null;
     try {
@@ -64,14 +120,17 @@ export default class ActivityService {
 
       // Insert db record
       logger.silly('Creating activities db record');
-      const results = await conn.query('INSERT INTO Activities VALUES (?, ?, ?, ?, ?, ?)', [
-        UUID,
-        activity.classroom_code,
-        activity.name,
-        activity.type,
-        activity.start_time,
-        activity.end_time,
-      ]);
+      const results = await conn.query(
+        'INSERT INTO Activities VALUES (?, ?, ?, ?, DEFAULT, ?, ?)',
+        [
+          UUID,
+          activity.classroom_code,
+          activity.name,
+          activity.type,
+          activity.start_time,
+          activity.end_time,
+        ],
+      );
 
       await conn.commit();
       logger.silly('Transaction Commited');
