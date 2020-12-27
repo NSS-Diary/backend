@@ -1,7 +1,8 @@
 import argon2 from 'argon2';
 import logger from '../loaders/logger';
 import db from '../loaders/db';
-import { ICreateUser, IGetUserInfo, IStudentMetadata } from '../interfaces/Users';
+import mysql2 from 'mysql2';
+import { ICreateUser, IGetUserInfo, IListUserRequest, IStudentMetadata } from '../interfaces/Users';
 import { IDefaultResponse } from '../interfaces/Response';
 
 export default class UserService {
@@ -19,6 +20,44 @@ export default class UserService {
         user.user_type,
       ]);
       return { success: true, message: 'User created' };
+    } catch (e) {
+      logger.error(e);
+      throw e;
+    }
+  }
+
+  public async ListUser(query: IListUserRequest, user: IGetUserInfo): Promise<IGetUserInfo[]> {
+    try {
+      if (user.user_type == 'CLASSROOM_ADMIN') {
+        if (query.role === 'STUDENT') {
+          const [
+            classroomInfo,
+          ] = await db.query('SELECT * FROM Classroom WHERE Classroom.classroom_code=?', [
+            query.classroom_code,
+          ]);
+
+          if (classroomInfo[0].admin_name !== user.username) {
+            throw new Error('Invalid Permissions');
+          }
+        } else {
+          throw new Error('Invalid Permissions');
+        }
+      }
+
+      logger.silly('Fetching Users');
+      var sqlQuery;
+      if (query.role === 'STUDENT') {
+        sqlQuery =
+          'SELECT username, email, name, farm_hours, social_hours FROM Users INNER JOIN Student_Metadata ON Users.username = Student_Metadata.student WHERE Student_Metadata.classroom_code=' +
+          mysql2.escape(query.classroom_code);
+      } else {
+        sqlQuery =
+          "SELECT username, email, name FROM Users WHERE Users.user_type = 'CLASSROOM_ADMIN'";
+      }
+      const queryRes = await db.query(sqlQuery);
+      const users = JSON.parse(JSON.stringify(queryRes[0]));
+
+      return users;
     } catch (e) {
       logger.error(e);
       throw e;

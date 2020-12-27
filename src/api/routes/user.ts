@@ -82,4 +82,31 @@ export default (app: Router) => {
       }
     },
   );
+
+  route.post(
+    '/list',
+    middlewares.isAuth,
+    middlewares.requiredRole('CLASSROOM_ADMIN'),
+    celebrate({
+      body: Joi.object({
+        classroom_code: Joi.string(),
+        role: Joi.when('classroom_code', {
+          is: Joi.exist(),
+          then: Joi.valid('STUDENT').required(),
+          otherwise: Joi.valid('CLASSROOM_ADMIN').required(),
+        }),
+      }),
+    }),
+    async (req: IAuth, res: Response, next: NextFunction) => {
+      logger.debug('Calling User List endpoint with body: %o', req.body);
+      try {
+        const userServiceInstance = new UserService();
+        const result = await userServiceInstance.ListUser(req.body, req.token);
+        return res.json(result).status(200);
+      } catch (e) {
+        logger.error('🔥 error: %o', e);
+        return next(e);
+      }
+    },
+  );
 };

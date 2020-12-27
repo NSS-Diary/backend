@@ -28,3 +28,8 @@ export interface IStudentMetadata {
   classroom_code: string;
   project_name: string;
 }
+
+export interface IListUserRequest {
+  role: string;
+  classroom_code?: string;
+}
