@@ -3,7 +3,7 @@ import db from '../../loaders/db';
 import ShortUniqueId from 'short-unique-id';
 import { IDefaultResponse } from '../../interfaces/Response';
 import { IGetUserInfo } from '../../interfaces/Users';
-import { IAddActivity, IListActivity } from '../../interfaces/Activity';
+import { IAddActivity, IListActivity, ILockActivity } from '../../interfaces/Activity';
 
 export default class ActivityService {
   public async ListActivities(classroom_code: string): Promise<IListActivity[]> {
@@ -20,6 +20,79 @@ export default class ActivityService {
     } catch (e) {
       logger.error(e);
       throw e;
+    }
+  }
+
+  public async LockActivity(info: ILockActivity, user: IGetUserInfo): Promise<IDefaultResponse> {
+    let conn = null;
+    try {
+      conn = await db.getConnection();
+      logger.silly('Transaction Begin');
+      await conn.beginTransaction();
+
+      // Find Activity
+      logger.silly('Fetching the activity info');
+      const [
+        activityInfo,
+      ] = await conn.query('SELECT * FROM Activities WHERE Activities.activity_id = ?', [
+        info.activity_id,
+      ]);
+      if (activityInfo.length === 0) {
+        throw new Error('Invalid Activity');
+      } else if (activityInfo.Status === 'LOCKED') {
+        throw new Error('Activity already Locked');
+      }
+
+      //
+      // TODO: Check if Classroom Admin is the admin corresponding to activities classroom
+      //
+
+      logger.silly('Fetching the enrolled students');
+      let enrolledStudents;
+      if (activityInfo[0].type === 'SOCIAL') {
+        [
+          enrolledStudents,
+        ] = await conn.query(
+          'SELECT * FROM Enrolls INNER JOIN Student_Metadata ON Enrolls.student=Student_Metadata.student WHERE Enrolls.activity_id = ? GROUP BY Student_Metadata.social_hours',
+          [info.activity_id],
+        );
+      } else {
+        [
+          enrolledStudents,
+        ] = await conn.query(
+          'SELECT * FROM Enrolls INNER JOIN Student_Metadata ON Enrolls.student=Student_Metadata.student WHERE Enrolls.activity_id = ? GROUP BY Student_Metadata.farm_hours',
+          [info.activity_id],
+        );
+      }
+
+      // Reject Students
+      logger.silly('Rejecting Students');
+      var rejectedStudents = enrolledStudents
+        .slice(info.maxStudents)
+        .map((student) => student.enrollment_id);
+      var query = await conn.query('DELETE FROM Enrolls WHERE enrollment_id IN (?)', [
+        rejectedStudents,
+      ]);
+
+      //TODO: Send Notification
+      enrolledStudents = enrolledStudents.slice(0, info.maxStudents);
+
+      //Lock Activity
+      logger.silly('Locking Activity');
+      await conn.query('UPDATE Activities SET Status=? WHERE activity_id=?', [
+        'LOCKED',
+        info.activity_id,
+      ]);
+
+      await conn.commit();
+      logger.silly('Transaction Commited');
+      return { success: true, message: 'Student Enrolled' };
+    } catch (error) {
+      logger.error(error);
+      if (conn) await conn.rollback();
+      throw error;
+    } finally {
+      if (conn) await conn.release();
     }
   }
 

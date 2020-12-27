@@ -13,3 +13,7 @@ export interface IListActivity {
   start_time: string;
   end_time: string;
 }
+export interface ILockActivity {
+  activity_id: string;
+  maxStudents: number;
+}

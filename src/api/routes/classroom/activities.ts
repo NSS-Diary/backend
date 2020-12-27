@@ -83,4 +83,27 @@ export default (app: Router) => {
       }
     },
   );
+
+  route.post(
+    '/lock',
+    middlewares.isAuth,
+    middlewares.requiredRole('CLASSROOM_ADMIN'),
+    celebrate({
+      body: Joi.object({
+        activity_id: Joi.string().required(),
+        maxStudents: Joi.number().required(),
+      }),
+    }),
+    async (req: IAuth, res: Response, next: NextFunction) => {
+      logger.debug('Calling Activity Lock endpoint with body %o', req.body);
+      try {
+        const acitivityServiceInstance = new ActivityService();
+        const result = await acitivityServiceInstance.LockActivity(req.body, req.token);
+        return res.json(result).status(200);
+      } catch (e) {
+        logger.error('🔥 error: %o', e);
+        return next(e);
+      }
+    },
+  );
 };
