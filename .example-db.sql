@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: mysql
--- Generation Time: Nov 29, 2020 at 05:41 PM
+-- Generation Time: Dec 27, 2020 at 09:22 AM
 -- Server version: 10.3.26-MariaDB-1:10.3.26+maria~focal
 -- PHP Version: 7.3.23
 
@@ -33,6 +33,7 @@ CREATE TABLE `Activities` (
   `classroom_code` varchar(10) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
   `name` varchar(50) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
   `type` enum('FARM','SOCIAL') NOT NULL,
+  `Status` enum('LOCKED','UNLOCKED') NOT NULL DEFAULT 'UNLOCKED',
   `start_time` datetime NOT NULL,
   `end_time` datetime NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
@@ -44,7 +45,7 @@ CREATE TABLE `Activities` (
 --
 
 CREATE TABLE `Classroom` (
-  `classroom_code` varchar(10) NOT NULL,
+  `classroom_code` varchar(10) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
   `name` varchar(20) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
   `admin_name` varchar(50) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
@@ -124,10 +125,16 @@ CREATE TABLE `Users` (
   `username` varchar(50) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
   `email` varchar(50) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
   `name` varchar(50) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
-  `salt` varchar(50) NOT NULL,
-  `password` varchar(100) NOT NULL,
+  `password` varchar(200) NOT NULL,
   `user_type` enum('STUDENT','CLASSROOM_ADMIN','SUPER_ADMIN') NOT NULL DEFAULT 'STUDENT'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+--
+-- Dumping data for table `Users`
+--
+
+INSERT INTO `Users` (`username`, `email`, `name`, `password`, `user_type`) VALUES
+('admin', 'admin@gmail.com', 'admin', '$argon2i$v=19$m=4096,t=3,p=1$ABn4uN8NzIQhl8gg3kqcjA$faxG2XW2eK555XMZ+XqsgUGQcmTgpxiQZvtoHApxszc', 'SUPER_ADMIN');
 
 --
 -- Indexes for dumped tables
@@ -137,25 +144,32 @@ CREATE TABLE `Users` (
 -- Indexes for table `Activities`
 --
 ALTER TABLE `Activities`
-  ADD PRIMARY KEY (`activity_id`);
+  ADD PRIMARY KEY (`activity_id`),
+  ADD KEY `classroom_code` (`classroom_code`);
 
 --
 -- Indexes for table `Classroom`
 --
 ALTER TABLE `Classroom`
-  ADD PRIMARY KEY (`classroom_code`);
+  ADD PRIMARY KEY (`classroom_code`),
+  ADD UNIQUE KEY `name` (`name`),
+  ADD KEY `admin_name` (`admin_name`);
 
 --
 -- Indexes for table `Enrolls`
 --
 ALTER TABLE `Enrolls`
-  ADD PRIMARY KEY (`enrollment_id`);
+  ADD PRIMARY KEY (`enrollment_id`),
+  ADD UNIQUE KEY `activity_id_student` (`activity_id`,`student`) USING BTREE,
+  ADD KEY `activity_id` (`activity_id`) USING BTREE,
+  ADD KEY `student` (`student`);
 
 --
 -- Indexes for table `Notification`
 --
 ALTER TABLE `Notification`
-  ADD PRIMARY KEY (`notification_id`);
+  ADD PRIMARY KEY (`notification_id`),
+  ADD KEY `classroom_code` (`classroom_code`);
 
 --
 -- Indexes for table `Projects`
@@ -168,13 +182,15 @@ ALTER TABLE `Projects`
 --
 ALTER TABLE `Proofs`
   ADD PRIMARY KEY (`img_id`),
-  ADD UNIQUE KEY `IMG_PATH` (`img_path`);
+  ADD UNIQUE KEY `IMG_PATH` (`img_path`),
+  ADD KEY `enrollment_foreign` (`enrollment_id`);
 
 --
 -- Indexes for table `Student_Metadata`
 --
 ALTER TABLE `Student_Metadata`
-  ADD PRIMARY KEY (`student`);
+  ADD PRIMARY KEY (`student`),
+  ADD KEY `classroom_code` (`classroom_code`);
 
 --
 -- Indexes for table `Users`
@@ -182,6 +198,48 @@ ALTER TABLE `Student_Metadata`
 ALTER TABLE `Users`
   ADD PRIMARY KEY (`username`),
   ADD UNIQUE KEY `EMAIL` (`email`);
+
+--
+-- Constraints for dumped tables
+--
+
+--
+-- Constraints for table `Activities`
+--
+ALTER TABLE `Activities`
+  ADD CONSTRAINT `classroom_code_foreign` FOREIGN KEY (`classroom_code`) REFERENCES `Classroom` (`classroom_code`);
+
+--
+-- Constraints for table `Classroom`
+--
+ALTER TABLE `Classroom`
+  ADD CONSTRAINT `admin_foreign` FOREIGN KEY (`admin_name`) REFERENCES `Users` (`username`);
+
+--
+-- Constraints for table `Enrolls`
+--
+ALTER TABLE `Enrolls`
+  ADD CONSTRAINT `activity_id_foreign` FOREIGN KEY (`activity_id`) REFERENCES `Activities` (`activity_id`),
+  ADD CONSTRAINT `student_foreign` FOREIGN KEY (`student`) REFERENCES `Users` (`username`);
+
+--
+-- Constraints for table `Notification`
+--
+ALTER TABLE `Notification`
+  ADD CONSTRAINT `classroom_code_foreign2` FOREIGN KEY (`classroom_code`) REFERENCES `Classroom` (`classroom_code`);
+
+--
+-- Constraints for table `Proofs`
+--
+ALTER TABLE `Proofs`
+  ADD CONSTRAINT `enrollment_foreign` FOREIGN KEY (`enrollment_id`) REFERENCES `Enrolls` (`enrollment_id`);
+
+--
+-- Constraints for table `Student_Metadata`
+--
+ALTER TABLE `Student_Metadata`
+  ADD CONSTRAINT `classroom_code_foreign3` FOREIGN KEY (`classroom_code`) REFERENCES `Classroom` (`classroom_code`),
+  ADD CONSTRAINT `student_foreign2` FOREIGN KEY (`student`) REFERENCES `Users` (`username`);
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
