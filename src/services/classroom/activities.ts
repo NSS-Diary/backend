@@ -20,9 +20,10 @@ export default class ActivityService {
       // TODO: Add Verification for users
       //
       logger.silly('Fetching Activities');
-      const list = await db.query('SELECT * FROM Activities Where Activities.classroom_code = ?', [
-        classroom_code,
-      ]);
+      const list = await db.query(
+        'SELECT * FROM Activities Where Activities.classroom_code = ? AND Activities.Status = ?',
+        [classroom_code, 'UNLOCKED'],
+      );
       const res = JSON.parse(JSON.stringify(list[0]));
       return res;
     } catch (e) {
@@ -55,7 +56,7 @@ export default class ActivityService {
     try {
       logger.silly('Fetching Verification List');
       const list = await db.query(
-        'SELECT * FROM Enrolls Where Enrolls.status = ? AND Enrolls.activity_id=?',
+        'SELECT * FROM Enrolls INNER JOIN Proofs ON Enrolls.enrollment_id = Proofs.enrollment_id Where Enrolls.status = ? AND Enrolls.activity_id=?',
         ['VERIFICATION', activity_id],
       );
       const res = JSON.parse(JSON.stringify(list[0]));
