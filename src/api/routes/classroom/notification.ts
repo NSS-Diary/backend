@@ -33,7 +33,7 @@ export default (app: Router) => {
     },
   );
 
-  route.get(
+  route.post(
     '/list',
     middlewares.isAuth,
     celebrate({
