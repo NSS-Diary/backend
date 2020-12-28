@@ -20,10 +20,9 @@ export default class ActivityService {
       // TODO: Add Verification for users
       //
       logger.silly('Fetching Activities');
-      const list = await db.query(
-        'SELECT * FROM Activities Where Activities.classroom_code = ? AND Activities.Status = ?',
-        [classroom_code, 'UNLOCKED'],
-      );
+      const list = await db.query('SELECT * FROM Activities Where Activities.classroom_code = ?', [
+        classroom_code,
+      ]);
       const res = JSON.parse(JSON.stringify(list[0]));
       return res;
     } catch (e) {
@@ -332,7 +331,7 @@ export default class ActivityService {
       const results = await conn.query('INSERT INTO Proofs VALUES (?, ?, ?)', [
         imageName,
         enrollment_id,
-        config.imageUploadDir + '/' + imageName + path.extname(file.originalname),
+        'http://nss-db.nikhilrajesh.com/proofs/' + imageName + path.extname(file.originalname),
       ]);
 
       //change to verifications stage
