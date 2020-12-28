@@ -6,6 +6,20 @@ import { IDefaultResponse } from '../../interfaces/Response';
 import { IGetUserInfo } from '../../interfaces/Users';
 
 export default class ClassroomService {
+  public async ClassroomInfo(classroom_code: string): Promise<IClassroom> {
+    try {
+      logger.silly('Fetching Classroom Info');
+      const list = await db.query('SELECT * FROM Classroom Where Classroom.classroom_code = ?', [
+        classroom_code,
+      ]);
+      const res = JSON.parse(JSON.stringify(list[0]));
+      return res;
+    } catch (e) {
+      logger.error(e);
+      throw e;
+    }
+  }
+
   public async CreateClassroom(classroom: ICreateClassroom): Promise<IDefaultResponse> {
     let conn = null;
     try {
