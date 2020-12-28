@@ -28,3 +28,10 @@ export interface IListEnrollment {
   start_time: string;
   end_time: string;
 }
+export interface IVerificationList {
+  enrollment_id: string;
+  student: string;
+  status: string;
+  hours: number;
+  activity_id: string;
+}

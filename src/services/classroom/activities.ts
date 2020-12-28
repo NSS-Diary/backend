@@ -7,6 +7,7 @@ import {
   IAddActivity,
   IListEnrollment,
   IListActivity,
+  IVerificationList,
   ILockActivity,
 } from '../../interfaces/Activity';
 import path from 'path';
@@ -43,6 +44,21 @@ export default class ActivityService {
         Reflect.deleteProperty(info, 'classroom_code');
         return info;
       });
+      return res;
+    } catch (e) {
+      logger.error(e);
+      throw e;
+    }
+  }
+
+  public async VerificationList(activity_id: string): Promise<IVerificationList[]> {
+    try {
+      logger.silly('Fetching Verification List');
+      const list = await db.query(
+        'SELECT * FROM Enrolls Where Enrolls.status = ? AND Enrolls.activity_id=?',
+        ['VERIFICATION', activity_id],
+      );
+      const res = JSON.parse(JSON.stringify(list[0]));
       return res;
     } catch (e) {
       logger.error(e);
@@ -279,7 +295,7 @@ export default class ActivityService {
       ]);
 
       //change to verifications stage
-      logger.silly('Changing enrollment to Verfication');
+      logger.silly('Changing enrollment to Verification');
       await conn.query('UPDATE Enrolls SET status=? WHERE enrollment_id=?', [
         'VERIFICATION',
         enrollment_id,

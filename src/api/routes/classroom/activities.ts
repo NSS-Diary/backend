@@ -73,6 +73,28 @@ export default (app: Router) => {
   );
 
   route.post(
+    '/verification-list',
+    middlewares.isAuth,
+    middlewares.requiredRole('CLASSROOM_ADMIN'),
+    celebrate({
+      body: Joi.object({
+        activity_id: Joi.string().required(),
+      }),
+    }),
+    async (req: IAuth, res: Response, next: NextFunction) => {
+      logger.debug('Calling Activity  Verification List endpoint');
+      try {
+        const acitivityServiceInstance = new ActivityService();
+        const result = await acitivityServiceInstance.VerificationList(req.body.activity_id);
+        return res.json(result).status(200);
+      } catch (e) {
+        logger.error('🔥 error: %o', e);
+        return next(e);
+      }
+    },
+  );
+
+  route.post(
     '/list',
     middlewares.isAuth,
     celebrate({
