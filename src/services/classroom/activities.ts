@@ -260,6 +260,44 @@ export default class ActivityService {
     }
   }
 
+  public async Verify(enrollment_id: String, newStatus: string): Promise<IDefaultResponse> {
+    let conn = null;
+    try {
+      conn = await db.getConnection();
+      logger.silly('Transaction Begin');
+      await conn.beginTransaction();
+
+      // Find enrollment
+      logger.silly('Fetching the enrollment info');
+      const [enrollInfo] = await conn.query(
+        'SELECT * FROM Enrolls WHERE Enrolls.enrollment_id = ?',
+        [enrollment_id],
+      );
+      if (enrollInfo.length === 0) {
+        throw new Error('Invalid Enrollment Id');
+      } else if (enrollInfo[0].status !== 'VERIFICATION') {
+        throw new Error('Cannot Verify Now');
+      }
+
+      //change to verifications stage
+      logger.silly('Changing enrollment to Verification');
+      await conn.query('UPDATE Enrolls SET status=? WHERE enrollment_id=?', [
+        newStatus,
+        enrollment_id,
+      ]);
+
+      await conn.commit();
+      logger.silly('Transaction Commited');
+      return { success: true, message: 'Successfully Marked' };
+    } catch (error) {
+      logger.error(error);
+      if (conn) await conn.rollback();
+      throw error;
+    } finally {
+      if (conn) await conn.release();
+    }
+  }
+
   public async UploadProof(
     enrollment_id: String,
     username: String,
