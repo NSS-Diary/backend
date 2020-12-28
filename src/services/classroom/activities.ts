@@ -114,9 +114,11 @@ export default class ActivityService {
       var rejectedStudents = enrolledStudents
         .slice(info.maxStudents)
         .map((student) => student.enrollment_id);
-      var query = await conn.query('DELETE FROM Enrolls WHERE enrollment_id IN (?)', [
-        rejectedStudents,
-      ]);
+      if (rejectedStudents.length !== 0) {
+        var query = await conn.query('DELETE FROM Enrolls WHERE enrollment_id IN (?)', [
+          rejectedStudents,
+        ]);
+      }
 
       //TODO: Send Notification
       enrolledStudents = enrolledStudents.slice(0, info.maxStudents);
