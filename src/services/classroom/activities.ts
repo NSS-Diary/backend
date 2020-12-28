@@ -97,14 +97,14 @@ export default class ActivityService {
         [
           enrolledStudents,
         ] = await conn.query(
-          'SELECT * FROM Enrolls INNER JOIN Student_Metadata ON Enrolls.student=Student_Metadata.student WHERE Enrolls.activity_id = ? GROUP BY Student_Metadata.social_hours',
+          'SELECT * FROM Enrolls INNER JOIN Student_Metadata ON Enrolls.student=Student_Metadata.student WHERE Enrolls.activity_id = ? ORDER BY Student_Metadata.social_hours',
           [info.activity_id],
         );
       } else {
         [
           enrolledStudents,
         ] = await conn.query(
-          'SELECT * FROM Enrolls INNER JOIN Student_Metadata ON Enrolls.student=Student_Metadata.student WHERE Enrolls.activity_id = ? GROUP BY Student_Metadata.farm_hours',
+          'SELECT * FROM Enrolls INNER JOIN Student_Metadata ON Enrolls.student=Student_Metadata.student WHERE Enrolls.activity_id = ? ORDER BY Student_Metadata.farm_hours',
           [info.activity_id],
         );
       }
