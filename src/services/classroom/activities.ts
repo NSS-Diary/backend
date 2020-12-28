@@ -3,7 +3,12 @@ import db from '../../loaders/db';
 import ShortUniqueId from 'short-unique-id';
 import { IDefaultResponse } from '../../interfaces/Response';
 import { IGetUserInfo } from '../../interfaces/Users';
-import { IAddActivity, IListActivity, ILockActivity } from '../../interfaces/Activity';
+import {
+  IAddActivity,
+  IListEnrollment,
+  IListActivity,
+  ILockActivity,
+} from '../../interfaces/Activity';
 import path from 'path';
 import config from '../../config';
 
@@ -18,6 +23,26 @@ export default class ActivityService {
         classroom_code,
       ]);
       const res = JSON.parse(JSON.stringify(list[0]));
+      return res;
+    } catch (e) {
+      logger.error(e);
+      throw e;
+    }
+  }
+
+  public async EnrolledList(username: string): Promise<IListEnrollment[]> {
+    try {
+      logger.silly('Fetching Enrollments');
+      const list = await db.query(
+        'SELECT * FROM Enrolls INNER JOIN Activities ON Enrolls.activity_id = Activities.activity_id Where Enrolls.student = ?',
+        [username],
+      );
+      const res = JSON.parse(JSON.stringify(list[0])).map((info) => {
+        Reflect.deleteProperty(info, 'student');
+        Reflect.deleteProperty(info, 'Status');
+        Reflect.deleteProperty(info, 'classroom_code');
+        return info;
+      });
       return res;
     } catch (e) {
       logger.error(e);
@@ -241,6 +266,8 @@ export default class ActivityService {
         throw new Error('Invalid Enrollment Id');
       } else if (enrollInfo[0].student !== username) {
         throw new Error('Invalid Permissions');
+      } else if (enrollInfo[0].status !== 'ENROLLED') {
+        throw new Error('Already uploaded proofs');
       }
 
       // Insert db record
@@ -249,6 +276,13 @@ export default class ActivityService {
         imageName,
         enrollment_id,
         config.imageUploadDir + '/' + imageName + path.extname(file.originalname),
+      ]);
+
+      //change to verifications stage
+      logger.silly('Changing enrollment to Verfication');
+      await conn.query('UPDATE Enrolls SET status=? WHERE enrollment_id=?', [
+        'VERIFICATION',
+        enrollment_id,
       ]);
 
       await conn.commit();

@@ -30,6 +30,22 @@ const upload = multer({
 export default (app: Router) => {
   app.use('/classroom/activities', route);
 
+  route.get(
+    '/enrolled-list',
+    middlewares.isAuth,
+    async (req: IAuth, res: Response, next: NextFunction) => {
+      logger.debug('Calling Activities Enrolled List');
+      try {
+        const acitivityServiceInstance = new ActivityService();
+        const result = await acitivityServiceInstance.EnrolledList(req.token.username);
+        return res.json(result).status(200);
+      } catch (e) {
+        logger.error('🔥 error: %o', e);
+        return next(e);
+      }
+    },
+  );
+
   route.post(
     '/add',
     middlewares.isAuth,
@@ -56,7 +72,7 @@ export default (app: Router) => {
     },
   );
 
-  route.get(
+  route.post(
     '/list',
     middlewares.isAuth,
     celebrate({
