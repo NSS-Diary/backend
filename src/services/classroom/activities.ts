@@ -4,6 +4,8 @@ import ShortUniqueId from 'short-unique-id';
 import { IDefaultResponse } from '../../interfaces/Response';
 import { IGetUserInfo } from '../../interfaces/Users';
 import { IAddActivity, IListActivity, ILockActivity } from '../../interfaces/Activity';
+import path from 'path';
+import config from '../../config';
 
 export default class ActivityService {
   public async ListActivities(classroom_code: string): Promise<IListActivity[]> {
@@ -208,6 +210,50 @@ export default class ActivityService {
       await conn.commit();
       logger.silly('Transaction Commited');
       return { success: true, message: 'Activities added' };
+    } catch (error) {
+      logger.error(error);
+      if (conn) await conn.rollback();
+      throw error;
+    } finally {
+      if (conn) await conn.release();
+    }
+  }
+
+  public async UploadProof(
+    enrollment_id: String,
+    username: String,
+    imageName: String,
+    file,
+  ): Promise<IDefaultResponse> {
+    let conn = null;
+    try {
+      conn = await db.getConnection();
+      logger.silly('Transaction Begin');
+      await conn.beginTransaction();
+
+      // Find enrollment
+      logger.silly('Fetching the enrollment info');
+      const [enrollInfo] = await conn.query(
+        'SELECT * FROM Enrolls WHERE Enrolls.enrollment_id = ?',
+        [enrollment_id],
+      );
+      if (enrollInfo.length === 0) {
+        throw new Error('Invalid Enrollment Id');
+      } else if (enrollInfo[0].student !== username) {
+        throw new Error('Invalid Permissions');
+      }
+
+      // Insert db record
+      logger.silly('Creating proofs db record');
+      const results = await conn.query('INSERT INTO Proofs VALUES (?, ?, ?)', [
+        imageName,
+        enrollment_id,
+        config.imageUploadDir + '/' + imageName + path.extname(file.originalname),
+      ]);
+
+      await conn.commit();
+      logger.silly('Transaction Commited');
+      return { success: true, message: 'Proof Uploaded' };
     } catch (error) {
       logger.error(error);
       if (conn) await conn.rollback();

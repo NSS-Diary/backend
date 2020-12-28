@@ -4,7 +4,28 @@ import logger from '../../../loaders/logger';
 import middlewares from '../../middlewares';
 import { IAuth } from '../../../interfaces/Middleware';
 import ActivityService from '../../../services/classroom/activities';
+import multer from 'multer';
+import fs from 'fs';
+import path from 'path';
+import config from '../../../config';
+import crypto from 'crypto';
 const route = Router();
+
+const upload = multer({
+  storage: multer.diskStorage({
+    destination: async (req, __, cb) => {
+      // @ts-ignore
+      let path = `${config.imageUploadDir}`;
+      if (!fs.existsSync(path)) {
+        fs.mkdirSync(path);
+      }
+      cb(null, path);
+    },
+    filename: (req, file, cb) => {
+      cb(null, req.imageName + path.extname(file.originalname));
+    },
+  }),
+});
 
 export default (app: Router) => {
   app.use('/classroom/activities', route);
@@ -99,6 +120,42 @@ export default (app: Router) => {
       try {
         const acitivityServiceInstance = new ActivityService();
         const result = await acitivityServiceInstance.LockActivity(req.body, req.token);
+        return res.json(result).status(200);
+      } catch (e) {
+        logger.error('🔥 error: %o', e);
+        return next(e);
+      }
+    },
+  );
+
+  route.post(
+    '/upload',
+    middlewares.isAuth,
+    (req: IAuth, res: Response, next: NextFunction) => {
+      crypto.randomBytes(16, (_, random) => {
+        // @ts-ignore
+        req.imageName = random.toString('hex');
+        next();
+      });
+    },
+    upload.single('proof'),
+    celebrate({
+      body: Joi.object({
+        enrollment_id: Joi.string().required(),
+      }),
+    }),
+    async (req: IAuth, res: Response, next: NextFunction) => {
+      logger.debug('Calling Activities Proof Upload endpoint with body: %o', req.body);
+      try {
+        const acitivityServiceInstance = new ActivityService();
+        const result = await acitivityServiceInstance.UploadProof(
+          req.body.enrollment_id,
+          req.token.username,
+          // @ts-ignore
+          req.imageName,
+          // @ts-ignore
+          req.file,
+        );
         return res.json(result).status(200);
       } catch (e) {
         logger.error('🔥 error: %o', e);

@@ -18,6 +18,8 @@ export default {
 
   jwtSecret: process.env.JWT_SECRET,
 
+  imageUploadDir: process.env.IMAGE_UPLOAD_DIR,
+
   logs: {
     level: process.env.LOG_LEVEL || 'silly',
   },
