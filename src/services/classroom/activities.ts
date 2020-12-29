@@ -153,7 +153,7 @@ export default class ActivityService {
       const [
         activityStatus,
       ] = await conn.query(
-        'SELECT Activities.Status FROM Student_Metadata, Activities WHERE Student_Metadata.student = ? AND Activities.activity_id = ? AND Activities.classroom_code = Student_Metadata.classroom_code',
+        'SELECT Activities.Status, Activities.start_time, Activities.end_time FROM Student_Metadata, Activities WHERE Student_Metadata.student = ? AND Activities.activity_id = ? AND Activities.classroom_code = Student_Metadata.classroom_code',
         [username, activity_id],
       );
       if (activityStatus.length === 0) {
@@ -161,6 +161,11 @@ export default class ActivityService {
       } else if (activityStatus[0].Status === 'LOCKED') {
         throw new Error('Activity is Locked. Cannot Enroll');
       }
+
+      var dt1 = new Date(activityStatus.start_time);
+      var dt2 = new Date(activityStatus.end_time);
+      var hours = (dt2.getTime() - dt1.getTime()) / 1000;
+      hours /= 60 * 60;
 
       // Find a valid activity_id
       logger.silly('Generating UUID');
@@ -179,10 +184,11 @@ export default class ActivityService {
 
       // Insert db record
       logger.silly('Creating enrollment db record');
-      const results = await conn.query('INSERT INTO Enrolls VALUES (?, ?, ?, DEFAULT, DEFAULT)', [
+      const results = await conn.query('INSERT INTO Enrolls VALUES (?, ?, ?, DEFAULT, ?)', [
         UUID,
         activity_id,
         username,
+        hours,
       ]);
 
       await conn.commit();
@@ -287,6 +293,26 @@ export default class ActivityService {
         newStatus,
         enrollment_id,
       ]);
+
+      if (newStatus === 'COMPLETED') {
+        const [
+          activityInfo,
+        ] = await conn.query('SELECT * FROM Activities WHERE Activities.activity_id = ?', [
+          enrollInfo[0].activity_id,
+        ]);
+
+        if (activityInfo[0].type === 'SOCIAL') {
+          await conn.query(
+            'UPDATE Student_Metadata SET social_hours=social_hours + ? WHERE student=?',
+            [enrollInfo[0].hours, enrollInfo[0].student],
+          );
+        } else {
+          await conn.query(
+            'UPDATE Student_Metadata SET farm_hours=farm_hours + ? WHERE student=?',
+            [enrollInfo[0].hours, enrollInfo[0].student],
+          );
+        }
+      }
 
       await conn.commit();
       logger.silly('Transaction Commited');
